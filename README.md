@@ -100,5 +100,5 @@ python <NOME_DO_ARQUIVO>.py
 
 >Vinícius Pires de Souza
 
->Luiz Henrique Sampaio
+>Luíads Henrique Sampaio
 
