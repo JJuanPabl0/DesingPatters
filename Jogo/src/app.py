@@ -1,138 +1,117 @@
 import pygame
 
-# Inicializar o pygame
-pygame.init()
-
-# Dimensões da janela
+# Configurações gerais
 LARGURA = 800
 ALTURA = 600
-
-# Cores
-BRANCO = (255, 255, 255)
 PRETO = (0, 0, 0)
+BRANCO = (255, 255, 255)
 
-# Configurações da tela
-tela = pygame.display.set_mode((LARGURA, ALTURA))
-pygame.display.set_caption("Ping Pong")
+class Publisher:
+    def __init__(self):
+        self.subscribers = []
 
-# Relógio
-relogio = pygame.time.Clock()
+    def subscribe(self, subscriber):
+        self.subscribers.append(subscriber)
 
-# Fonte para o placar
-fonte = pygame.font.Font(None, 74)
+    def unsubscribe(self, subscriber):
+        self.subscribers.remove(subscriber)
 
-# Padrão Bridge: Interface para renderização
-class Renderizador:
-    def renderizar(self, tela, elemento):
-        raise NotImplementedError("Deve ser implementado pela subclasse")
+    def notify(self, message):
+        for subscriber in self.subscribers:
+            subscriber.update(message)
 
-# Implementação concreta do Renderizador
-class Renderizador2D(Renderizador):
-    def renderizar(self, tela, elemento):
-        elemento.desenhar(tela)
+class Placar:
+    def __init__(self):
+        self.pontos = [0, 0]
+        self.publisher = Publisher()  # Publisher para o placar
+        self.publisher.subscribe(self)  # O placar é um subscriber
 
-# Padrão Composite: Interface comum para elementos do jogo
-class ElementoJogo:
-    def atualizar(self):
-        pass
+    def atualizar(self, lado):
+        if lado == "esquerda":
+            self.pontos[0] += 1
+        elif lado == "direita":
+            self.pontos[1] += 1
+        # Notificar os subscribers quando o placar for atualizado
+        self.publisher.notify(f"Placar atualizado: {self.pontos}")
+
+    def desenhar(self, tela, fonte):
+        texto_esq = fonte.render(str(self.pontos[0]), True, BRANCO)
+        texto_dir = fonte.render(str(self.pontos[1]), True, BRANCO)
+        tela.blit(texto_esq, (LARGURA // 4, 20))
+        tela.blit(texto_dir, (3 * LARGURA // 4, 20))
+
+    def update(self, message):
+        # Essa função será chamada quando o placar for atualizado
+        print(message)  # Aqui você pode realizar ações como mostrar uma notificação ou alterar outros componentes
+
+class Raquete:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 10, 100)
+
+    def mover(self, direcao, altura_tela):
+        if direcao == "cima" and self.rect.top > 0:
+            self.rect.y -= 5
+        elif direcao == "baixo" and self.rect.bottom < altura_tela:
+            self.rect.y += 5
 
     def desenhar(self, tela):
-        pass
+        pygame.draw.rect(tela, BRANCO, self.rect)
 
-# Raquete como um Leaf do Composite
-class Raquete(ElementoJogo):
-    def __init__(self, x, y, largura, altura, velocidade):
-        self.x = x
-        self.y = y
-        self.largura = largura
-        self.altura = altura
-        self.velocidade = velocidade
+class Bola:
+    def __init__(self):
+        self.rect = pygame.Rect(LARGURA // 2 - 10, ALTURA // 2 - 10, 20, 20)
+        self.velocidade_x = -5
+        self.velocidade_y = 5
 
-    def mover(self, direcao, altura_maxima):
-        if direcao == "cima" and self.y > 0:
-            self.y -= self.velocidade
-        elif direcao == "baixo" and self.y < altura_maxima - self.altura:
-            self.y += self.velocidade
+    def mover(self, largura_tela, altura_tela, placar):
+        self.rect.x += self.velocidade_x
+        self.rect.y += self.velocidade_y
 
-    def desenhar(self, tela):
-        pygame.draw.rect(tela, BRANCO, (self.x, self.y, self.largura, self.altura))
-
-# Bola como outro Leaf do Composite
-class Bola(ElementoJogo):
-    def __init__(self, x, y, raio, velocidade_x, velocidade_y):
-        self.x = x
-        self.y = y
-        self.raio = raio
-        self.velocidade_x = velocidade_x
-        self.velocidade_y = velocidade_y
-        self.velocidade_inicial = (velocidade_x, velocidade_y)
-
-    def atualizar(self, largura, altura, raquete_esq, raquete_dir, placar):
-        self.x += self.velocidade_x
-        self.y += self.velocidade_y
-
-        # Colisão com paredes
-        if self.y - self.raio <= 0 or self.y + self.raio >= altura:
+        if self.rect.top <= 0 or self.rect.bottom >= altura_tela:
             self.velocidade_y *= -1
 
-        # Colisão com raquetes
-        if (self.x - self.raio <= raquete_esq.x + raquete_esq.largura and
-            raquete_esq.y <= self.y <= raquete_esq.y + raquete_esq.altura):
-            self.velocidade_x *= -1
+        if self.rect.left <= 0:
+            placar.atualizar("direita")
+            self.resetar()
 
-        if (self.x + self.raio >= raquete_dir.x and
-            raquete_dir.y <= self.y <= raquete_dir.y + raquete_dir.altura):
-            self.velocidade_x *= -1
+        if self.rect.right >= largura_tela:
+            placar.atualizar("esquerda")
+            self.resetar()
 
-        # Verifica se alguém pontuou
-        if self.x < 0:
-            placar[1] += 1
-            self.resetar_posicao(largura, altura)
-        elif self.x > largura:
-            placar[0] += 1
-            self.resetar_posicao(largura, altura)
-
-    def resetar_posicao(self, largura, altura):
-        self.x = largura // 2
-        self.y = altura // 2
-        self.velocidade_x, self.velocidade_y = self.velocidade_inicial
+    def resetar(self):
+        self.rect.center = (LARGURA // 2, ALTURA // 2)
+        self.velocidade_x *= -1
 
     def desenhar(self, tela):
-        pygame.draw.ellipse(tela, BRANCO, (self.x - self.raio, self.y - self.raio, self.raio * 2, self.raio * 2))
+        pygame.draw.ellipse(tela, BRANCO, self.rect)
 
-# Composite principal que agrega elementos do jogo
-class ComponenteJogo(ElementoJogo):
+class Jogo:
     def __init__(self):
-        self.elementos = []
+        self.bola = Bola()
+        self.raquete_esquerda = Raquete(10, ALTURA // 2 - 50)
+        self.raquete_direita = Raquete(LARGURA - 20, ALTURA // 2 - 50)
 
-    def adicionar(self, elemento):
-        self.elementos.append(elemento)
+    def atualizar(self, largura_tela, altura_tela, placar):
+        self.bola.mover(largura_tela, altura_tela, placar)
 
-    def atualizar(self, largura, altura, placar):
-        for elemento in self.elementos:
-            if isinstance(elemento, Bola):
-                elemento.atualizar(largura, altura, self.elementos[0], self.elementos[1], placar)
+        if self.bola.rect.colliderect(self.raquete_esquerda.rect) or self.bola.rect.colliderect(self.raquete_direita.rect):
+            self.bola.velocidade_x *= -1
 
     def desenhar(self, tela):
-        for elemento in self.elementos:
-            elemento.desenhar(tela)
+        self.bola.desenhar(tela)
+        self.raquete_esquerda.desenhar(tela)
+        self.raquete_direita.desenhar(tela)
 
-# Criar elementos do jogo
-raquete_esquerda = Raquete(10, ALTURA // 2 - 50, 10, 100, 6)
-raquete_direita = Raquete(LARGURA - 20, ALTURA // 2 - 50, 10, 100, 6)
-bola = Bola(LARGURA // 2, ALTURA // 2, 10, 4, 4)
+# Inicialização do Pygame
+pygame.init()
+tela = pygame.display.set_mode((LARGURA, ALTURA))
+pygame.display.set_caption("Pong")
+relogio = pygame.time.Clock()
+fonte = pygame.font.Font(None, 74)
 
-# Componente principal do jogo
-jogo = ComponenteJogo()
-jogo.adicionar(raquete_esquerda)
-jogo.adicionar(raquete_direita)
-jogo.adicionar(bola)
-
-# Renderizador
-renderizador = Renderizador2D()
-
-# Placar
-placar = [0, 0]
+# Instanciar os componentes do jogo
+placar = Placar()
+jogo = Jogo()
 
 # Loop principal do jogo
 rodando = True
@@ -144,26 +123,21 @@ while rodando:
     # Movimento das raquetes
     teclas = pygame.key.get_pressed()
     if teclas[pygame.K_w]:
-        raquete_esquerda.mover("cima", ALTURA)
+        jogo.raquete_esquerda.mover("cima", ALTURA)
     if teclas[pygame.K_s]:
-        raquete_esquerda.mover("baixo", ALTURA)
+        jogo.raquete_esquerda.mover("baixo", ALTURA)
     if teclas[pygame.K_UP]:
-        raquete_direita.mover("cima", ALTURA)
+        jogo.raquete_direita.mover("cima", ALTURA)
     if teclas[pygame.K_DOWN]:
-        raquete_direita.mover("baixo", ALTURA)
+        jogo.raquete_direita.mover("baixo", ALTURA)
 
     # Atualizar elementos do jogo
     jogo.atualizar(LARGURA, ALTURA, placar)
 
     # Renderizar elementos
     tela.fill(PRETO)
-    renderizador.renderizar(tela, jogo)
-
-    # Renderizar o placar
-    texto_esq = fonte.render(str(placar[0]), True, BRANCO)
-    texto_dir = fonte.render(str(placar[1]), True, BRANCO)
-    tela.blit(texto_esq, (LARGURA // 4, 20))
-    tela.blit(texto_dir, (3 * LARGURA // 4, 20))
+    jogo.desenhar(tela)
+    placar.desenhar(tela, fonte)
 
     pygame.display.flip()
 
