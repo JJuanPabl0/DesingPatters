@@ -74,7 +74,25 @@ python <NOME_DO_ARQUIVO>.py
 ### 6. **Loop Principal**
 - O jogo roda continuamente, processando eventos, movimentando os objetos e desenhando a tela até que o usuário feche a janela.
 
----
+### 7. **Padrões de Design Utilizados**
+
+Este projeto faz uso dos seguintes padrões de design:
+
+1. **Singleton**
+   - Garante que apenas uma instância da classe `GerenciadorEstadoJogo` seja criada, permitindo controle centralizado do estado do jogo.
+
+2. **Facade**
+   - Simplifica a interação com o sistema, encapsulando operações complexas como movimentação de objetos, gerenciamento de colisões e reinício do jogo em uma única classe.
+
+3. **Adapter**
+   - Permite mapear diferentes teclas de entrada de forma flexível, adaptando o sistema às preferências do usuário ou a diferentes dispositivos.
+
+4. **Composite**
+   - Utilizado para organizar objetos gráficos como raquetes e bola, permitindo tratá-los como componentes individuais ou em grupos.
+
+5. **Bridge**
+   - Separa a lógica de implementação gráfica da lógica de controle, permitindo maior flexibilidade na mudança ou expansão de funcionalidades.
+
 
 ## Controles
 
